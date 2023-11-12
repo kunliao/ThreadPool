@@ -60,11 +60,10 @@ public:
         std::unique_lock<std::mutex> lock(mutex_);
 
         if (state_ == State::RUNNING && curThreadSize_ < maxThreadSize_ && idleThreadSize_ == 0) {
-            auto ptr = std::unique_ptr<Thread>(
-                    new Thread(std::bind(&ThreadPool::threadFunc, this, std::placeholders::_1)));
-            int threadId = ptr->getId();
-            ptr->start();
-            threads_.emplace(threadId, std::move(ptr));
+            auto t = std::unique_ptr<Thread>(
+                    new Thread(std::bind(&ThreadPool::threadFunc, this)));
+            std::thread::id threadId = t->start();
+            threads_.emplace(threadId, std::move(t));
             curThreadSize_++;
         }
 
@@ -104,9 +103,8 @@ public:
     void stop() {
         if (state_ != State::STOP) {
             std::unique_lock<std::mutex> lock(mutex_);
-            threads_.clear();
-
             while (!taskQue_.empty()) taskQue_.pop();
+            threads_.clear();
         }
         state_ = State::STOP;
     }
@@ -133,7 +131,7 @@ public:
 
 
 private:
-    void threadFunc(int threadid) {
+    void threadFunc() {
         idleThreadSize_++;
         while (state_ == State::RUNNING || state_ == State::STOPPING) {
             std::function<void()> task;
@@ -143,7 +141,7 @@ private:
                 while (taskQue_.size() == 0) {
                     if (state_ == State::STOPPING) {
                         // 线程池要结束，回收线程资源
-                        threads_.erase(threadid); //
+                        threads_.erase(std::this_thread::get_id()); //
                         exitCond_.notify_all();
 
                         goto _quit; // 线程函数结束，线程结束
@@ -153,7 +151,7 @@ private:
                     if (notEmpty_.wait_for(lock, std::chrono::seconds(keepAliveTime_)) ==
                         std::cv_status::timeout) {
                         if (curThreadSize_ > coreThreadSize_ && taskQue_.size() == 0) {
-                            threads_.erase(threadid); //
+                            threads_.erase(std::this_thread::get_id()); //
                             exitCond_.notify_all();
 
                             goto _quit;
@@ -186,7 +184,7 @@ private:
 
 
 private:
-    std::unordered_map<int, std::unique_ptr<Thread>> threads_; // 线程列表
+    std::unordered_map<std::thread::id, std::unique_ptr<Thread>> threads_; // 线程列表
     size_t coreThreadSize_;  // 初始的线程数量
     size_t maxThreadSize_; // 线程数量上限阈值
     std::atomic_int curThreadSize_;    // 记录当前线程池里面线程的总数量

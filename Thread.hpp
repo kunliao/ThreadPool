@@ -10,27 +10,24 @@
 
 class Thread {
 public:
-    using ThreadFunc = std::function<void(int)>;
+    using ThreadFunc = std::function<void()>;
+
     Thread(ThreadFunc func)
-            : func_(func), threadId_(generateId_++) {}
+            : func_(func) {}
 
 
     ~Thread() = default;
 
-    void start() {
-        std::thread t(func_, threadId_);
+    std::thread::id start() {
+        std::thread t(func_);
         t.detach();
+        return t.get_id();
     }
 
-    int getId() const {
-        return threadId_;
-    }
 
 private:
     ThreadFunc func_;
-    static int generateId_;
-    int threadId_;
 };
 
-int Thread::generateId_ = 0;
+
 #endif //

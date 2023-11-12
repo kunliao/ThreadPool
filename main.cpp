@@ -9,7 +9,6 @@ using namespace std;
 
 
 #include "ThreadPool.hpp"
-#include "Thread.hpp"
 
 int main() {
     ThreadPool *pool = new ThreadPool(0, 5);
@@ -17,14 +16,13 @@ int main() {
 
 
     for (int i = 0; i < 100; i++) {
-        auto f = pool->submitTask([=]() -> void {
+        auto f = pool->submitTask([=]() -> int {
             this_thread::sleep_for(chrono::milliseconds(rand() % 1000));
             cout << "task " << i << endl;
+            return rand();
         });
 
-        f.get();
-
-        // this_thread::sleep_for(chrono::milliseconds(rand() % 100));
+        int r = f.get();
     }
     //delete pool;
     //pool->shutdown();
