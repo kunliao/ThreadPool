@@ -5,9 +5,6 @@
 #include <functional>
 
 
-using namespace std;
-
-
 #include "ThreadPool.hpp"
 
 int main() {
@@ -16,18 +13,19 @@ int main() {
 
 
     for (int i = 0; i < 100; i++) {
-        auto f = pool->submitTask([=]() -> int {
-            this_thread::sleep_for(chrono::milliseconds(rand() % 1000));
-            cout << "task " << i << endl;
-            return rand();
+        std::future<int> future = pool->submitTask([=]() -> int {
+            int r = rand();
+            std::this_thread::sleep_for(std::chrono::milliseconds(r % 1000));
+            std::cout << "task " << i << " r=" << r << std::endl;
+            return r;
         });
 
-        int r = f.get();
+        int ret = future.get();
+        std::cout << "ret=" << ret << std::endl;
     }
     //delete pool;
     //pool->shutdown();
     //pool->stop();
     getchar();
-
-    int a = 90;
+    return 0;
 }
